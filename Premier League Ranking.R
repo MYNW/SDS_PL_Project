@@ -281,38 +281,5 @@ ggplot(PL_points, aes(x = points_last, y = points)) +
        title = "Total Points Accumulated, 1992-2016")
 
 
-##------------------------------------------------------------------------
-##STOP
-##------------------------------------------------------------------------
 
-## Transfer data (detailed)
-t.base.link = "http://www.transfermarkt.co.uk/premier-league/transferrekorde/wettbewerb/GB1/ajax/yw1/saison_id/"
-t.season = seq(1992, 2016, by = 1)
-t.filler = "/land_id/alle/ausrichtung//spielerposition_id//altersklasse//leihe//w_s//zuab/zu/plus/1/page/"
-t.pages = seq(1, 4, by = 1)
-
-## Create links
-transfer.links = paste0(t.base.link,t.season,t.filler)
-transfer.links[1:5]
-transfer1.links = sort(outer(transfer.links, t.pages, FUN = paste0))
-transfer1.links[1:5]
-
-## Testing
- %>%
-  read_html() %>%  # Read html 
-  html_node(".league-table-mini td:nth-child(2)") %>%  # Grab the text 
-  html_text()  # Create text
-
-##------------------------------------------------------------------------
-## Test - Wikipedia
-## Grab infor from the first link
-rank2016.data = "https://en.wikipedia.org/wiki/2015–16_Premier_League" %>%
-  read_html() %>%  # Read html 
-  html_node(":nth-child(36)") %>%  # Grab the text 
-  html_table()  # Create text
-
-transfer.total.data = "http://www.transferleague.co.uk/premier-league-1992-to-date/transfer-league-tables/premier-league-table-1992-to-date" %>%
-  read_html() %>%  # Read html 
-  html_node("table") %>%  # Grab the text 
-  html_table(fill = FALSE)  # Create text  
 
