@@ -11,6 +11,7 @@ library(stringi)
 library(tidyr)
 library(httr)
 library(ggplot2)
+library(XML)
 ##-----------------------------------------------
 ## Scraping team rankings for different seasons
 
@@ -495,6 +496,48 @@ PL_data1 <- left_join(PL_data, awardsmerged.tidy, by = c("season_start" = "Year"
 PL_data1$star_players[is.na(PL_data1$star_players)] <- 0
 
 ##------------------------------------------------------------------------
+## Generate a dummy for teams that played internationally that season
+
+#Champions League
+link1 = paste0("https://en.wikipedia.org/wiki/English_football_clubs_in_international_competitions")  #link to wiki page
+link.data1 = link1 %>%   #
+  read_html() %>% 
+  html_node(".wikitable:nth-child(16) , tr:nth-child(48) td:nth-child(1) a , tr:nth-child(47) a , tr:nth-child(46) a") %>% 
+  # extract first node with class wikitable
+  html_table(fill = TRUE) %>% 
+  select(Year, Team) %>% 
+  filter(Year >= 1992)
+# then convert the HTML table into a data frame
+
+#Europe League
+link2 = paste0("https://en.wikipedia.org/wiki/English_football_clubs_in_international_competitions")  #link to wiki page
+link.data2 = link2 %>%   #
+  read_html() %>% 
+  html_node(".wikitable:nth-child(19)") %>% 
+  # extract first node with class wikitable
+  html_table(fill = TRUE) %>% 
+  select(Year, Team) %>% 
+  filter(Year >= 1992)
+
+#new approach: combining two data frames
+df1 = data.frame(link.data1)
+df2 = data.frame(link.data2)
+
+df3 = rbind(df1, df2) %>%
+  arrange(Year, Team) %>%
+  mutate(Year = as.numeric(strtrim(Year,4)),
+         played_internationally = 1)
+
+# remove duplicates based on "Year" and "Team"
+df4 <-df3[!duplicated(df3),]
+
+# merge with existing data frame
+PL_data2 <- left_join(PL_data1, df4, by = c("season_start" = "Year", 
+                                                         "club" = "Team")) 
+## Clean new dummy
+PL_data2$played_internationally[is.na(PL_data2$played_internationally)] <- 0
+
+##------------------------------------------------------------------------
 ## Prepare a data frame for the first table - check classes of vectors
 sapply(PL_data, class)
 PL_data$avg_age <- as.numeric(PL_data$avg_age)
@@ -508,9 +551,9 @@ PL_Table1 <- PL_data %>%
          club_transfer_ratio1 = total_transfer_spending/season_mean,
          log_transfer = log10(total_transfer_spending),
          log_points = log10(points)) %>%
-  ungroup() %>%
+  ungroup() # %>%
   # arrange(club, season) %>%
-  mutate(future_points = points[])
+  # mutate(future_points = points[])
 
 ## Highest transfer ratio
 PL_Topratio <- PL_Table1 %>%
@@ -524,7 +567,7 @@ ggplot(PL_Table1, aes(x = total_transfer_spending, y = points)) +
   geom_point(alpha = .25) + 
   geom_smooth()
 
-# Transfer spending and points (relative value)
+  # Transfer spending and points (relative value)
 ggplot(PL_Table1, aes(x = log_transfer, y = log_points)) + 
   geom_point(alpha = .25) + 
   geom_smooth()
@@ -552,7 +595,6 @@ ggplot(PL_Table1, aes(x = club_transfer_ratio1, y = points)) +
 PL_points = PL_data %>%
   arrange(club, -season_start) %>%
   mutate(points_last = ifelse(season_start != season_end[-1], NA, lead(points)))
-
 
 ## Graph relationship between past and current points accumulated
 ggplot(PL_points, aes(x = points_last, y = points)) + 
