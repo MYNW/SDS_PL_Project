@@ -414,7 +414,12 @@ award1.clean = award1[-1,]
 colnames(award1.clean) = award1.clean[1, ]
 award1.clean = award1.clean[-1,]
 
-## instead of cleaning, just create a new variable and drop the old.
+##Removing not needed columns
+award1.clean = subset(award1.clean, select = -c(5:6) )
+award2.clean = subset(award2.clean, select = -c(2, 4, 6) )
+
+##Removing Playernames and only leaving team namesfrom first dataframe by dropping and creating new variables
+
 n<-length(award1.clean$Year)
 First_Place<-rep(NA,n)
 for (i in 1:n) {
@@ -428,13 +433,32 @@ for (i in 1:n) {
 award1.clean$First_Place = First_Place
 award1.clean$"First place" = NULL
 
-##Removing Playernames and only leaving team namesfrom first dataframe
+n<-length(award1.clean$Year)
+Second_place<-rep(NA,n)
+for (i in 1:n) {
+  x<-award1.clean$"Second place"[i]
+  if(grepl("+Barcelona", x)) {Second_place[i]="Barcelona"}
+  else if (grepl("+Real Madrid", x)) {Second_place[i]="Real Madrid"}
+  else if (grepl("+Bayern Munich", x)) {Second_place[i]="Bayern Munich"}
+  else {Second_place[i]="NA" }
+}
 
-gsub(".*? (.+)", "\\1", award1.clean$Club.1)
+award1.clean$Second_place = Second_place
+award1.clean$"Second place" = NULL
 
-##Removing not needed columns
-award1.clean = subset(award1.clean, select = -c(5:6) )
-award2.clean = subset(award2.clean, select = -c(2, 4, 6) )
+n<-length(award1.clean$Year)
+Third_Place<-rep(NA,n)
+for (i in 1:n) {
+  x<-award1.clean$"Third place"[i]
+  if(grepl("+Barcelona", x)) {Third_Place[i]="Barcelona"}
+  else if (grepl("+Real Madrid", x)) {Third_Place[i]="Real Madrid"}
+  else if (grepl("+Bayern Munich", x)) {Third_Place[i]="Bayern Munich"}
+  else {Third_Place[i]="NA" }
+}
+
+award1.clean$Third_Place = Third_Place
+award1.clean$"Third place" = NULL
+
 
 ##Changing column Names to match both frames
 
@@ -447,6 +471,11 @@ colnames(award1.clean)[4] <- "Club.3"
 colnames(award2.clean)[2] <- "Club.1"
 colnames(award2.clean)[3] <- "Club.2"
 colnames(award2.clean)[4] <- "Club.3"
+
+##Removing 1991 since we only need 1992 and later
+
+award2.clean = award2.clean[-1,]
+
 
 ##Merging both data frames into one
 awardsmerged <- merge(award2.clean, award1.clean, all = TRUE)
