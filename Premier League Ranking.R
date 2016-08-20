@@ -211,6 +211,174 @@ PL_transfer <- PL_transfer1 %>%
 PL_final <- full_join(PLranks1, PL_teams, by = c("season", "club"))
 PL_data <- full_join(PL_final, PL_transfer, by = c("season", "club"))
 
+##---------------------------------------------------------------------
+## Manager Dummy (Helge)
+
+# scrape data from wikipedia table
+link = "https://en.wikipedia.org/wiki/List_of_Premier_League_managers"
+
+css.selector = "td:nth-child(3) a"
+manager1.data = link %>% 
+  read_html() %>% 
+  html_nodes(css = css.selector) %>% 
+  html_text()
+
+css.selector = ":nth-child(17) td:nth-child(4)"
+manager2.data = link %>% 
+  read_html() %>% 
+  html_nodes(css = css.selector) %>% 
+  html_text()
+
+df = data.frame(month_year = manager2.data,
+                club = manager1.data)
+
+# create new variables for year and month
+n<-length(df$month_year)
+manager_year<-rep(NA,n)
+for (i in 1:n) {
+  x<-df$month_year[i]
+  if(grepl("+1992", x)) {manager_year[i]="1992"}
+  else if (grepl("+1993", x)) {manager_year[i]="1993"}
+  else if (grepl("+1994", x)) {manager_year[i]="1994"}
+  else if (grepl("+1995", x)) {manager_year[i]="1995"}
+  else if (grepl("+1996", x)) {manager_year[i]="1996"}
+  else if (grepl("+1997", x)) {manager_year[i]="1997"}
+  else if (grepl("+1998", x)) {manager_year[i]="1998"}
+  else if (grepl("+1999", x)) {manager_year[i]="1999"}
+  else if (grepl("+2000", x)) {manager_year[i]="2000"}
+  else if (grepl("+2001", x)) {manager_year[i]="2001"}
+  else if (grepl("+2002", x)) {manager_year[i]="2002"}
+  else if (grepl("+2003", x)) {manager_year[i]="2003"}
+  else if (grepl("+2004", x)) {manager_year[i]="2004"}
+  else if (grepl("+2005", x)) {manager_year[i]="2005"}
+  else if (grepl("+2006", x)) {manager_year[i]="2006"}
+  else if (grepl("+2007", x)) {manager_year[i]="2007"}
+  else if (grepl("+2008", x)) {manager_year[i]="2008"}
+  else if (grepl("+2009", x)) {manager_year[i]="2009"}
+  else if (grepl("+2010", x)) {manager_year[i]="2010"}
+  else if (grepl("+2011", x)) {manager_year[i]="2011"}
+  else if (grepl("+2012", x)) {manager_year[i]="2012"}
+  else if (grepl("+2013", x)) {manager_year[i]="2013"}
+  else if (grepl("+2014", x)) {manager_year[i]="2014"}
+  else if (grepl("+2015", x)) {manager_year[i]="2015"}
+  else if (grepl("+2016", x)) {manager_year[i]="2016"}
+  else {manager_year[i]="NA" }
+}
+
+n<-length(df$month_year)
+manager_month<-rep(NA,n)
+for (i in 1:n) {
+  x<-df$month_year[i]
+  if(grepl("+January", x)) {manager_month[i]="January"}
+  else if (grepl("+February", x)) {manager_month[i]="February"}
+  else if (grepl("+March", x)) {manager_month[i]="March"}
+  else if (grepl("+April", x)) {manager_month[i]="April"}
+  else if (grepl("+May", x)) {manager_month[i]="May"}
+  else if (grepl("+June", x)) {manager_month[i]="June"}
+  else if (grepl("+July", x)) {manager_month[i]="July"}
+  else if (grepl("+August", x)) {manager_month[i]="August"}
+  else if (grepl("+September", x)) {manager_month[i]="September"}
+  else if (grepl("+October", x)) {manager_month[i]="October"}
+  else if (grepl("+November", x)) {manager_month[i]="November"}
+  else if (grepl("+December", x)) {manager_month[i]="December"}
+  else {manager_month[i]="NA" }
+}
+
+n<-length(df$month_year)
+month_number<-rep(NA,n)
+for (i in 1:n) {
+  x<-df$month_year[i]
+  if(grepl("+January", x)) {month_number[i]="1"}
+  else if (grepl("+February", x)) {month_number[i]="2"}
+  else if (grepl("+March", x)) {month_number[i]="3"}
+  else if (grepl("+April", x)) {month_number[i]="4"}
+  else if (grepl("+May", x)) {month_number[i]="5"}
+  else if (grepl("+June", x)) {month_number[i]="6"}
+  else if (grepl("+July", x)) {month_number[i]="7"}
+  else if (grepl("+August", x)) {month_number[i]="8"}
+  else if (grepl("+September", x)) {month_number[i]="9"}
+  else if (grepl("+October", x)) {month_number[i]="10"}
+  else if (grepl("+November", x)) {month_number[i]="11"}
+  else if (grepl("+December", x)) {month_number[i]="12"}
+  else {manager_month[i]="NA" }
+}
+
+df$month_number = month_number
+df$manager_month = manager_month
+df$manager_year = manager_year
+
+
+# create a subset, that only contains the manager changes from 1992 or later 
+# (the wiki table had some information about the 1980s).
+df2 = subset(df, manager_year!="NA")
+df2$manager_year = as.numeric(df2$manager_year)
+class(df2$manager_year)
+
+# create a variable that contains both club name and season.
+n<-length(df2$month_year)
+change_id<-rep(NA,n)
+for (i in 1:n) {
+  x<-df2$month_number[i]
+  if(x>=5){change_id[i] = paste0(df2$club[i], "_", df2$manager_year[i], "/", df2$manager_year[i] + 1)}
+  else if(x<5){change_id[i] = paste0(df2$club[i],"_", df2$manager_year[i] - 1, "/", df2$manager_year[i])}
+  else {change_id[i] = "NA"}
+}
+
+df2$change_id = change_id
+
+# create in PL_data a similar variable to the change_id variable in df2.
+n <- length(PL_data$season)
+team_year_id <- rep(NA,n)
+for (i in 1:n) {
+  x <- PL_data$season[i]
+  if (x == "92/93"){team_year_id[i] = paste0(PL_data$club[i], "_", "1992/1993")}
+  else if (x == "93/94"){team_year_id[i] = paste0(PL_data$club[i], "_", "1993/1994")}
+  else if (x == "94/95"){team_year_id[i] = paste0(PL_data$club[i], "_", "1994/1995")}
+  else if (x == "95/96"){team_year_id[i] = paste0(PL_data$club[i], "_", "1995/1996")}
+  else if (x == "96/97"){team_year_id[i] = paste0(PL_data$club[i], "_", "1996/1997")}
+  else if (x == "97/98"){team_year_id[i] = paste0(PL_data$club[i], "_", "1997/1998")}
+  else if (x == "98/99"){team_year_id[i] = paste0(PL_data$club[i], "_", "1998/1999")}
+  else if (x == "99/00"){team_year_id[i] = paste0(PL_data$club[i], "_", "1999/2000")}
+  else if (x == "00/01"){team_year_id[i] = paste0(PL_data$club[i], "_", "2000/2001")}
+  else if (x == "01/02"){team_year_id[i] = paste0(PL_data$club[i], "_", "2001/2002")}
+  else if (x == "02/03"){team_year_id[i] = paste0(PL_data$club[i], "_", "2002/2003")}
+  else if (x == "03/04"){team_year_id[i] = paste0(PL_data$club[i], "_", "2003/2004")}
+  else if (x == "04/05"){team_year_id[i] = paste0(PL_data$club[i], "_", "2004/2005")}
+  else if (x == "05/06"){team_year_id[i] = paste0(PL_data$club[i], "_", "2005/2006")}
+  else if (x == "06/07"){team_year_id[i] = paste0(PL_data$club[i], "_", "2006/2007")}
+  else if (x == "07/08"){team_year_id[i] = paste0(PL_data$club[i], "_", "2007/2008")}
+  else if (x == "08/09"){team_year_id[i] = paste0(PL_data$club[i], "_", "2008/2009")}
+  else if (x == "09/10"){team_year_id[i] = paste0(PL_data$club[i], "_", "2009/2010")}
+  else if (x == "10/11"){team_year_id[i] = paste0(PL_data$club[i], "_", "2010/2011")}
+  else if (x == "11/12"){team_year_id[i] = paste0(PL_data$club[i], "_", "2011/2012")}
+  else if (x == "12/13"){team_year_id[i] = paste0(PL_data$club[i], "_", "2012/2013")}
+  else if (x == "13/14"){team_year_id[i] = paste0(PL_data$club[i], "_", "2013/2014")}
+  else if (x == "14/15"){team_year_id[i] = paste0(PL_data$club[i], "_", "2014/2015")}
+  else if (x == "15/16"){team_year_id[i] = paste0(PL_data$club[i], "_", "2015/2016")}
+  else {team_year_id[i] = "NA"}
+}
+
+PL_data$team_year_id = team_year_id
+
+
+# test
+PL_data$team_year_id %in% df2$change_id
+
+# create a new variable that says TRUE for every element in team_year_id that is also in change_id.
+# SO it will give me TRUE for every row (club and season) where a manager change took place.
+manager_change2 = PL_data$team_year_id %in% df2$change_id
+
+# Make a 1 - 0 rather than TRUE - FALSE variable out of it.
+n <- length(PL_data$season)
+manager_change <- rep(NA,n)
+for (i in 1:n) {
+  x = manager_change2[i]
+  if (x == "TRUE") {manager_change[i] = 1}
+  else {manager_change[i] = 0}
+}  
+
+# add the final manager_change dummy to Mai's PL_data framme.
+PL_data$manager_change = manager_change
 
 ##------------------------------------------------------------------------
 ## Prepare a data frame for the first table - check classes of vectors
