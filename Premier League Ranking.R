@@ -8,6 +8,7 @@ library(dplyr)
 library(readr)
 library(stringr)
 library(stringi)
+library(tidyr)
 library(httr)
 library(ggplot2)
 ##-----------------------------------------------
@@ -449,6 +450,20 @@ colnames(award2.clean)[4] <- "Club.3"
 
 ##Merging both data frames into one
 awardsmerged <- merge(award2.clean, award1.clean, all = TRUE)
+
+## Tidy the data
+awardsmerged.tidy <- awardsmerged %>%
+  gather(ranking, player_club, Club.1:Club.3) %>%
+  arrange(Year) %>%
+  mutate(star_players = 1,
+         Year = as.numeric(Year)) %>%
+  select(-ranking)
+
+## Merge datasets
+PL_data1 <- left_join(PL_data, awardsmerged.tidy, by = c("season_start" = "Year", 
+                                                         "club" = "player_club")) 
+## Clean new dummy
+PL_data1$star_players[is.na(PL_data1$star_players)] <- 0
 
 ##------------------------------------------------------------------------
 ## Prepare a data frame for the first table - check classes of vectors
