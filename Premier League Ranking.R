@@ -1,5 +1,6 @@
-## Scraping team rankings for different seasons - TEST
+## SDS - Final Group Project - Premier League Performance Prediction
 
+##-----------------------------------------------
 ## Load libraries
 library("rvest")
 library("purrr")
@@ -9,6 +10,8 @@ library(stringr)
 library(stringi)
 library(httr)
 library(ggplot2)
+##-----------------------------------------------
+## Scraping team rankings for different seasons
 
 ## Create links to the pages to be scraped
 base.link = "http://www.statto.com/football/stats/england/premier-league/"
@@ -379,6 +382,73 @@ for (i in 1:n) {
 
 # add the final manager_change dummy to Mai's PL_data framme.
 PL_data$manager_change = manager_change
+
+##------------------------------------------------------------------------
+## Star-Index by Karolis
+
+##RAW TABLE EXTRACTION
+##TOP3 BALLON AWARD 2010-2015
+url1 <- "https://en.wikipedia.org/wiki/FIFA_Ballon_d%27Or"
+award1 <- url1 %>%
+  html() %>%
+  ##xPath to First Wiki table
+  html_nodes(xpath='//*[@id="mw-content-text"]/table[1]') %>%
+  html_table(fill = TRUE)
+award1 <- award1[[1]]
+
+
+##TOP3 World Player Award 1991 - 2009
+url2 <- "https://en.wikipedia.org/wiki/FIFA_World_Player_of_the_Year"
+award2 <- url2 %>%
+  html() %>%
+  ##xPath to First Wiki table
+  html_nodes(xpath='//*[@id="mw-content-text"]/table[1]') %>%
+  html_table(fill = TRUE)
+award2 <- award2[[1]]
+
+##TABLE CLEANUP
+##Removing random descriptive text from data frames
+award2.clean = award2[-20,]
+award1.clean = award1[-1,]
+colnames(award1.clean) = award1.clean[1, ]
+award1.clean = award1.clean[-1,]
+
+## instead of cleaning, just create a new variable and drop the old.
+n<-length(award1.clean$Year)
+First_Place<-rep(NA,n)
+for (i in 1:n) {
+  x<-award1.clean$"First place"[i]
+  if(grepl("+Barcelona", x)) {First_Place[i]="Barcelona"}
+  else if (grepl("+Real Madrid", x)) {First_Place[i]="Real Madrid"}
+  else if (grepl("+Bayern Munich", x)) {First_Place[i]="Bayern Munich"}
+  else {First_Place[i]="NA" }
+}
+
+award1.clean$First_Place = First_Place
+award1.clean$"First place" = NULL
+
+##Removing Playernames and only leaving team namesfrom first dataframe
+
+gsub(".*? (.+)", "\\1", award1.clean$Club.1)
+
+##Removing not needed columns
+award1.clean = subset(award1.clean, select = -c(5:6) )
+award2.clean = subset(award2.clean, select = -c(2, 4, 6) )
+
+##Changing column Names to match both frames
+
+##Frame 1
+colnames(award1.clean)[2] <- "Club.1"
+colnames(award1.clean)[3] <- "Club.2"
+colnames(award1.clean)[4] <- "Club.3"
+
+##Frame 2
+colnames(award2.clean)[2] <- "Club.1"
+colnames(award2.clean)[3] <- "Club.2"
+colnames(award2.clean)[4] <- "Club.3"
+
+##Merging both data frames into one
+awardsmerged <- merge(award2.clean, award1.clean, all = TRUE)
 
 ##------------------------------------------------------------------------
 ## Prepare a data frame for the first table - check classes of vectors
