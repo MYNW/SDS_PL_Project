@@ -542,8 +542,8 @@ PL_data2$played_internationally[is.na(PL_data2$played_internationally)] <- 0
 sapply(PL_data, class)
 PL_data$avg_age <- as.numeric(PL_data$avg_age)
 
-## Gen new variables
-PL_Table1 <- PL_data %>%
+## Generate new variables
+PL_Table1 <- PL_data2 %>%
   group_by(season) %>%
   mutate(season_median = median(total_transfer_spending),
          season_mean = mean(total_transfer_spending),
@@ -560,6 +560,31 @@ PL_Topratio <- PL_Table1 %>%
   arrange(-club_transfer_ratio) %>%
   select(season, club, club_transfer_ratio)
 knitr::kable(PL_Topratio[1:5, ])
+
+
+## Descriptive statistics
+# Development in transfer spending (mean and average)
+ggplot(PL_Table1, aes(x = season_start, y = season_median)) + 
+  geom_bar(stat = "identity")
+
+ggplot(PL_Table1, aes(x = season_start, y = season_mean)) + 
+  geom_line()
+
+# Box-plots - Manager changes and points distribution 
+ggplot(PL_Table1, aes(x = as.character(manager_change), y = points)) + 
+  geom_boxplot() + 
+  coord_flip() + 
+  xlab("Change in manager during the season?") + 
+  ylab("Total points accumulated") +
+  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
+
+# Box-plots - Manager changes and points distribution 
+ggplot(PL_Table1, aes(x = as.character(star_players), y = points)) + 
+  geom_boxplot() + 
+  coord_flip() + 
+  xlab("Star player (Ballon d'or nominee) on the team?") + 
+  ylab("Total points accumulated") +
+  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
 
 ## Make scatterplots - we should consider making log-log models
   # Transfer spending and points (absolute value)
@@ -588,7 +613,6 @@ ggplot(PL_Table1, aes(x = club_transfer_ratio1, y = points)) +
   geom_point(alpha = .25) + 
   geom_smooth() + 
   geom_vline(xintercept = 1)
-
 
 
 ## New data frame for points in past and current season
