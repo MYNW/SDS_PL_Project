@@ -555,7 +555,9 @@ PL_Table1 <- PL_data3 %>%
          club_transfer_ratio = total_transfer_spending/season_median,
          club_transfer_ratio1 = total_transfer_spending/season_mean,
          log_transfer = log10(total_transfer_spending),
-         log_points = log10(points)) %>%
+         log_points = log10(points),
+         log_transfer_ratio = log10(club_transfer_ratio),
+         foreigners = foreign_players/squad_size) %>%
   ungroup() 
 
 ## Highest transfer ratio
@@ -604,7 +606,7 @@ ggplot(PL_Table1, aes(x = total_transfer_spending, y = points)) +
   geom_smooth()
 
   # Transfer spending and points (relative value)
-ggplot(PL_Table1, aes(x = log_transfer, y = log_points)) + 
+ggplot(PL_Table1, aes(x = log_transfer_ratio, y = log_points)) + 
   geom_point(alpha = .25) + 
   geom_smooth()
 
@@ -631,8 +633,8 @@ PL_points = PL_Table1 %>%
   arrange(club, -season_start) %>%
   mutate(points_last = ifelse(season_start != season_end[-1], NA, lead(points)),
          status = ifelse(position > 18, "Bottom", 
-                         ifelse(position >= 5 , "Mid-table",
-                                ifelse(position != 1, "Top 4", "Winner"))))
+                         ifelse(position >= 6 , "Mid-table",
+                                ifelse(position != 1, "Top 6", "Winner"))))
 
 
 ## Graph relationship between past and current points accumulated
@@ -663,12 +665,25 @@ ggplot(PL_points, aes(x = club_transfer_ratio, y = points, colour = status)) +
   facet_wrap(~ manager_change, ncol = 2, 
              scales = "free_x") 
 
+## log-log model - DISCARD!
+ggplot(PL_points, aes(x = log_transfer_ratio, y = log_points, colour = status)) + 
+  geom_point(alpha = .25) + 
+  geom_smooth()
+
 
 ##-------------------------------------------------------------
 
-PL_promotion <- PL_data %>%
+## 
+PL_promotion <- PL_points %>%
   arrange(club, -season_start) %>%
   mutate (promotion = ifelse(season_start != season_end[-1], 1, 0))
 PL_promotion$promotion = ifelse(PL_promotion$season_start == 1992, 0, 
                                 PL_promotion$promotion)
 
+## Does transfer spending have a different effect for newly promoted teams?
+ggplot(PL_promotion, aes(x = club_transfer_ratio1, y = points)) + 
+  geom_point(alpha = 0.25) + 
+  geom_smooth() + 
+  geom_vline(xintercept = 1) + 
+  facet_wrap(~ promotion, ncol = 2, 
+             scales = "free_x") 
