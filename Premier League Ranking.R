@@ -613,7 +613,11 @@ ggplot(PL_Table1, aes(x = log_transfer_ratio, y = log_points)) +
   # Average team age and points (seemingly negative correlation)
 ggplot(PL_Table1, aes(x = avg_age, y = points)) + 
   geom_point(alpha = .25) + 
-  geom_smooth()
+  geom_smooth() + 
+  theme_bw() + 
+  labs( x = "Average age of team",
+        y = "Total points accumulated")
+  
 
   # Club transfer ratio and points (using the median)
 ggplot(PL_Table1, aes(x = club_transfer_ratio, y = points)) + 
@@ -632,7 +636,7 @@ ggplot(PL_Table1, aes(x = club_transfer_ratio1, y = points)) +
 PL_points = PL_Table1 %>%
   arrange(club, -season_start) %>%
   mutate(points_last = ifelse(season_start != season_end[-1], NA, lead(points)),
-         status = ifelse(position > 18, "Bottom", 
+         status = ifelse(position >= 18, "Bottom", 
                          ifelse(position >= 6 , "Mid-table",
                                 ifelse(position != 1, "Top 6", "Winner"))))
 
@@ -680,7 +684,16 @@ PL_promotion <- PL_points %>%
 PL_promotion$promotion = ifelse(PL_promotion$season_start == 1992, 0, 
                                 PL_promotion$promotion)
 
+
 ## Does transfer spending have a different effect for newly promoted teams?
+# Box-plots - International gameplay and points distribution 
+ggplot(PL_promotion, aes(x = as.character(promotion), y = points)) + 
+  geom_boxplot() + 
+  coord_flip() + 
+  xlab("Newly promoted team?") + 
+  ylab("Total points accumulated") +
+  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
+
 ggplot(PL_promotion, aes(x = club_transfer_ratio1, y = points)) + 
   geom_point(alpha = 0.25) + 
   geom_smooth() + 
