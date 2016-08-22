@@ -589,6 +589,14 @@ ggplot(PL_Table1, aes(x = as.character(star_players), y = points)) +
   ylab("Total points accumulated") +
   scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
 
+# Box-plots - International gameplay and points distribution 
+ggplot(PL_Table1, aes(x = as.character(played_internationally), y = points)) + 
+  geom_boxplot() + 
+  coord_flip() + 
+  xlab("Playing internationally this season?") + 
+  ylab("Total points accumulated") +
+  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
+
 ## Make scatterplots - we should consider making log-log models
   # Transfer spending and points (absolute value)
 ggplot(PL_Table1, aes(x = total_transfer_spending, y = points)) + 
@@ -621,7 +629,11 @@ ggplot(PL_Table1, aes(x = club_transfer_ratio1, y = points)) +
 ## New data frame for points in past and current season
 PL_points = PL_Table1 %>%
   arrange(club, -season_start) %>%
-  mutate(points_last = ifelse(season_start != season_end[-1], 0, lead(points)))
+  mutate(points_last = ifelse(season_start != season_end[-1], NA, lead(points)),
+         status = ifelse(position > 18, "Bottom", 
+                         ifelse(position >= 5 , "Mid-table",
+                                ifelse(position != 1, "Top 4", "Winner"))))
+
 
 ## Graph relationship between past and current points accumulated
 ggplot(PL_points, aes(x = points_last, y = points)) + 
@@ -631,6 +643,25 @@ ggplot(PL_points, aes(x = points_last, y = points)) +
        y = "Current Season",
        title = "Total Points Accumulated, 1992-2016")
 
+## Graph relationship between transfer ratio and points by club status (4 lines)
+ggplot(PL_points, aes(x = club_transfer_ratio, y = points, colour = status)) + 
+  geom_point(alpha = 0.25) + 
+  geom_smooth() + 
+  geom_vline(xintercept = 1)
+
+## Graph relationship between transfer ratio and points by status (1 line)
+ggplot(PL_points, aes(x = club_transfer_ratio, y = points)) + 
+  geom_point(aes(colour = status), alpha = 0.25) + 
+  geom_smooth() + 
+  geom_vline(xintercept = 1)
+
+## transfer ratios, team status and change in managers. 
+ggplot(PL_points, aes(x = club_transfer_ratio, y = points, colour = status)) + 
+  geom_point(alpha = 0.25) + 
+  geom_smooth() + 
+  geom_vline(xintercept = 1) + 
+  facet_wrap(~ manager_change, ncol = 2, 
+             scales = "free_x") 
 
 
 
