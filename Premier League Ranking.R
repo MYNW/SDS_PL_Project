@@ -534,16 +534,21 @@ df4 <-df3[!duplicated(df3),]
 # merge with existing data frame
 PL_data2 <- left_join(PL_data1, df4, by = c("season_start" = "Year", 
                                                          "club" = "Team")) 
-## Clean new dummy
-PL_data2$played_internationally[is.na(PL_data2$played_internationally)] <- 0
+
+## Clean new dummy and add a intl_play_last dummy
+PL_data2$played_internationally[is.na(PL_data2$played_internationally)] <- 0 
+PL_data3 = PL_data2%>%
+  arrange(club, -season_start) %>%
+  mutate(intl_play_last = ifelse(season_start == season_end[-1], 
+                                 lead(played_internationally), 0))
 
 ##------------------------------------------------------------------------
 ## Prepare a data frame for the first table - check classes of vectors
-sapply(PL_data, class)
-PL_data$avg_age <- as.numeric(PL_data$avg_age)
+sapply(PL_data3, class)
+PL_data3$avg_age <- as.numeric(PL_data3$avg_age)
 
 ## Generate new variables
-PL_Table1 <- PL_data2 %>%
+PL_Table1 <- PL_data3 %>%
   group_by(season) %>%
   mutate(season_median = median(total_transfer_spending),
          season_mean = mean(total_transfer_spending),
@@ -551,9 +556,7 @@ PL_Table1 <- PL_data2 %>%
          club_transfer_ratio1 = total_transfer_spending/season_mean,
          log_transfer = log10(total_transfer_spending),
          log_points = log10(points)) %>%
-  ungroup() # %>%
-  # arrange(club, season) %>%
-  # mutate(future_points = points[])
+  ungroup() 
 
 ## Highest transfer ratio
 PL_Topratio <- PL_Table1 %>%
@@ -616,9 +619,9 @@ ggplot(PL_Table1, aes(x = club_transfer_ratio1, y = points)) +
 
 
 ## New data frame for points in past and current season
-PL_points = PL_data %>%
+PL_points = PL_Table1 %>%
   arrange(club, -season_start) %>%
-  mutate(points_last = ifelse(season_start != season_end[-1], NA, lead(points)))
+  mutate(points_last = ifelse(season_start != season_end[-1], 0, lead(points)))
 
 ## Graph relationship between past and current points accumulated
 ggplot(PL_points, aes(x = points_last, y = points)) + 
