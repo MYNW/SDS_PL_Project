@@ -664,4 +664,11 @@ ggplot(PL_points, aes(x = club_transfer_ratio, y = points, colour = status)) +
              scales = "free_x") 
 
 
+##-------------------------------------------------------------
+
+PL_promotion <- PL_data %>%
+  arrange(club, -season_start) %>%
+  mutate (promotion = ifelse(season_start != season_end[-1], 1, 0))
+PL_promotion$promotion = ifelse(PL_promotion$season_start == 1992, 0, 
+                                PL_promotion$promotion)
 
