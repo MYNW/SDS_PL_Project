@@ -11,6 +11,7 @@ library(stringi)
 library(tidyr)
 library(httr)
 library(ggplot2)
+library(ggthemes)
 library(XML)
 ##-----------------------------------------------
 ## Scraping team rankings for different seasons
@@ -540,7 +541,8 @@ PL_data2$played_internationally[is.na(PL_data2$played_internationally)] <- 0
 PL_data3 = PL_data2%>%
   arrange(club, -season_start) %>%
   mutate(intl_play_last = ifelse(season_start == season_end[-1], 
-                                 lead(played_internationally), 0))
+                                 lead(played_internationally), 0)) %>%
+  arrange(season)
 
 ##------------------------------------------------------------------------
 ## Prepare a data frame for the first table - check classes of vectors
@@ -575,29 +577,32 @@ ggplot(PL_Table1, aes(x = season_start, y = season_median)) +
 ggplot(PL_Table1, aes(x = season_start, y = season_mean)) + 
   geom_line()
 
-# Box-plots - Manager changes and points distribution 
+# Box-plots - Manager changes and points distribution (***)
 ggplot(PL_Table1, aes(x = as.character(manager_change), y = points)) + 
   geom_boxplot() + 
   coord_flip() + 
   xlab("Change in manager during the season?") + 
   ylab("Total points accumulated") +
+  theme_bw() + 
   scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
 
-# Box-plots - Manager changes and points distribution 
+# Box-plots - Manager changes and points distribution (***)
 ggplot(PL_Table1, aes(x = as.character(star_players), y = points)) + 
   geom_boxplot() + 
   coord_flip() + 
   xlab("Star player (Ballon d'or nominee) on the team?") + 
   ylab("Total points accumulated") +
-  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
+  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes")) + 
+  theme_bw()
 
-# Box-plots - International gameplay and points distribution 
+# Box-plots - International gameplay and points distribution(***)
 ggplot(PL_Table1, aes(x = as.character(played_internationally), y = points)) + 
   geom_boxplot() + 
   coord_flip() + 
   xlab("Playing internationally this season?") + 
   ylab("Total points accumulated") +
-  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
+  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes")) +
+  theme_bw()
 
 ## Make scatterplots - we should consider making log-log models
   # Transfer spending and points (absolute value)
@@ -610,11 +615,11 @@ ggplot(PL_Table1, aes(x = log_transfer_ratio, y = log_points)) +
   geom_point(alpha = .25) + 
   geom_smooth()
 
-  # Average team age and points (seemingly negative correlation)
+  # Average team age and points (seemingly negative correlation) (***)
 ggplot(PL_Table1, aes(x = avg_age, y = points)) + 
   geom_point(alpha = .25) + 
   geom_smooth() + 
-  theme_bw() + 
+  theme_economist() + 
   labs( x = "Average age of team",
         y = "Total points accumulated")
   
@@ -641,27 +646,45 @@ PL_points = PL_Table1 %>%
                                 ifelse(position != 1, "Top 6", "Winner"))))
 
 
-## Graph relationship between past and current points accumulated
+## Graph relationship between past and current points accumulated (***)
 ggplot(PL_points, aes(x = points_last, y = points)) + 
   geom_point(alpha = .25) + 
   geom_smooth() + 
+  theme_economist() +
   labs(x = "Previous Season",
-       y = "Current Season",
-       title = "Total Points Accumulated, 1992-2016")
+       y = "Current Season") 
 
-## Graph relationship between transfer ratio and points by club status (4 lines)
+  
+## Graph relationship between transfer ratio and points by club status (4 lines) (***)
 ggplot(PL_points, aes(x = club_transfer_ratio, y = points, colour = status)) + 
   geom_point(alpha = 0.25) + 
   geom_smooth() + 
-  geom_vline(xintercept = 1)
+  theme_economist() + 
+  labs(x = "Club transfer spending as % of season's median",
+       y = "Total points accumulated") +
+  geom_vline(xintercept = 1) + 
+  scale_colour_discrete(guide = guide_legend(reverse=TRUE)) +
+  theme(legend.title=element_blank()) +
+  theme(legend.position = c(0.8, 0.33)) + 
+  theme(legend.background = element_rect()) + 
+  theme(legend.text = element_text(size = 8))
 
-## Graph relationship between transfer ratio and points by status (1 line)
+
+## Graph relationship between transfer ratio and points by status (1 line) (***)
 ggplot(PL_points, aes(x = club_transfer_ratio, y = points)) + 
   geom_point(aes(colour = status), alpha = 0.25) + 
-  geom_smooth() + 
-  geom_vline(xintercept = 1)
+  geom_smooth(color = "blue") + 
+  theme_economist() + 
+  labs(x = "Club transfer spending as % of season's median",
+       y = "Total points accumulated") +
+  geom_vline(xintercept = 1, color = "black") + 
+  scale_colour_discrete(guide = guide_legend(reverse=TRUE)) +
+  theme(legend.title=element_blank()) +
+  theme(legend.position = c(0.8, 0.33)) + 
+  theme(legend.background = element_rect()) + 
+  theme(legend.text = element_text(size = 8))
 
-## transfer ratios, team status and change in managers. 
+## transfer ratios, team status and change in managers - DISCARD!
 ggplot(PL_points, aes(x = club_transfer_ratio, y = points, colour = status)) + 
   geom_point(alpha = 0.25) + 
   geom_smooth() + 
@@ -686,17 +709,35 @@ PL_promotion$promotion = ifelse(PL_promotion$season_start == 1992, 0,
 
 
 ## Does transfer spending have a different effect for newly promoted teams?
-# Box-plots - International gameplay and points distribution 
+# Box-plots - International gameplay and points distribution (***)
 ggplot(PL_promotion, aes(x = as.character(promotion), y = points)) + 
   geom_boxplot() + 
   coord_flip() + 
   xlab("Newly promoted team?") + 
   ylab("Total points accumulated") +
-  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
+  scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes")) + 
+  theme_bw()
 
+# Discard this scatter plot!
 ggplot(PL_promotion, aes(x = club_transfer_ratio1, y = points)) + 
   geom_point(alpha = 0.25) + 
   geom_smooth() + 
   geom_vline(xintercept = 1) + 
   facet_wrap(~ promotion, ncol = 2, 
              scales = "free_x") 
+
+## Foreigners and points (no clear correlation) (***)
+ggplot(PL_promotion, aes(x = foreigners, y = points)) + 
+  geom_point(alpha = .25) + 
+  geom_smooth() + 
+  theme_economist() + 
+  labs( x = "Fraction of foreigners on the team",
+        y = "Total points accumulated")
+
+## Squad size and points (unclear, maybe a convex function?) (***)
+ggplot(PL_promotion, aes(x = squad_size, y = points)) + 
+  geom_point(alpha = .25) + 
+  geom_smooth() + 
+  theme_economist() + 
+  labs( x = "Team size",
+        y = "Total points accumulated")
