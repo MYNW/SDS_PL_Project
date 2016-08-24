@@ -61,7 +61,7 @@ cv.ridge.df <- data.frame(mse = cv.ridge$cvm,
                           lambda =cv.ridge$lambda)
 
 # Plot it
-ggplot(cv.ridge.df, aes( x = lambda, y = rmse)) + 
+ggplot(cv.ridge.df, aes( x = log(lambda), y = rmse)) + 
   geom_point() + geom_line() +
   geom_point(data = cv.ridge.df %>% 
                filter(rmse == min(rmse)),
@@ -120,7 +120,7 @@ Best.Lasso.df = OptimLambda(k = 100, x = x, y = y)  # lambda is 0.3083426
 RMSE.Lambda.df = RMSE.Lambda(k = 100, x = x, y = y)
 
 # Plot the lambda that minimizes RMSE
-ggplot(RMSE.Lambda.df, aes( x = lambda, y = mean.RMSE)) + 
+ggplot(RMSE.Lambda.df, aes( x = log(lambda), y = mean.RMSE)) + 
   geom_point() + geom_line() +
   geom_point(data = RMSE.Lambda.df %>% 
                filter(mean.RMSE == min(mean.RMSE)),
@@ -144,16 +144,106 @@ SLR.rmse <- function(SLR.sm)
 SLR.rmse(SLR.sm)  # RMSE is 13.04625
 
 
-## 
-n = nrow(PL_SL)
-indices = sort(sample(1:n, round(.5*n)))
-training.df = PL_SL[indices, ]
-test.df = PL_SL[-indices, ]
-SLR.fit = lm(training.df$points ~ training.df$points_last) 
-summary(SLR.fit)
-SLR.pred = predict(SLR.fit, test.df$points_last)
-SLR.rmse = sqrt(mean(SLR.pred-test.df$points)^2)
+## 10-fold cross validation with simple OLS model - Possibly a better approach
+folds = sample(rep(1:10, length = nrow(PL_SL)))
+folds
+table(folds)
+cv.errors = matrix(NA, 10)
+for (k in 1:10) {
+  best.fit = lm(points ~ points_last, data = PL_SL[folds != k, ])
+  pred = predict(best.fit, PL_SL[folds == k, ])
+  cv.errors[k] = mean((PL_SL$points[folds == k] - pred)^2)
+}
+rmse.cv = sqrt(apply(cv.errors, 2, mean))  # RMSE is 13.14936
+rmse.cv
 
 
+##--------------------------------------------------------
+## New X - 8 variables, with transfer spending excluded
+##--------------------------------------------------------
+PL_X <- PL_SL %>%
+  select(points_last, 
+         avg_age,
+         manager_change,
+         star_players,
+         played_internationally,
+         squad_size,
+         foreigners,
+         promotion)
+x1 <- data.matrix(PL_X)
+
+##--------------------------------------------------------
+## Ridge regression - No transfer ratio
+##--------------------------------------------------------
+
+fit.ridge1 = glmnet(x1, y, alpha = 0)
+plot(fit.ridge1, xvar = "lambda", label = TRUE)
+
+# 10 fold cross validation
+cv.ridge1 = cv.glmnet(x1, y, alpha = 0, nfolds = 10)
+plot(cv.ridge1)
+coef(cv.ridge1) # Coefficients when choosing lambda by MSE
+
+# Calculate RMSE in a new data frame
+cv.ridge1.df <- data.frame(mse = cv.ridge1$cvm, 
+                          rmse = sqrt(cv.ridge1$cvm), 
+                          lambda =cv.ridge1$lambda)
+
+# Plot it
+ggplot(cv.ridge1.df, aes( x = log(lambda), y = rmse)) + 
+  geom_point() + geom_line() +
+  geom_point(data = cv.ridge1.df %>% 
+               filter(rmse == min(rmse)),
+             color = "red") + 
+  labs(title = "Ridge Regression")
+
+# Find the lambda that minimizes RMSE
+best.ridge1.lambda = cv.ridge1.df %>% 
+  filter(rmse == min(rmse))
+best.ridge1.lambda  # is 0.9637915
+
+# Find the coefficients for this model
+coef(cv.ridge,s= 0.9637915)
+
+## Conclusion: Lambda unchanged, but higher RMSE
 
 
+##--------------------------------------------------------
+## Lasso Regression - Without transfer ratio
+##--------------------------------------------------------
+
+# Do and plot the Lasso regression
+fit.lasso1 = glmnet(x1, y, alpha = 1)
+plot(fit.lasso1, xvar = "lambda", label = TRUE)
+
+# Do 10 fold cross validation (based on MSE)
+cv.lasso1 = cv.glmnet(x1, y, alpha = 1, nfolds = 10)
+plot(cv.lasso1)
+coef(cv.lasso1)  # Foreigners and promotion are still excluded 
+
+## Run 10-Fold Cross Validation 100 times
+## and get the lambda with the minimum RMSE on average over the runs.
+
+# Run through the code to get the optimal lambda that minimizes RMSE on average
+Lasso1.df = Lasso.Lambdas(x = x, y = y)
+Best.Lasso1.df = OptimLambda(k = 100, x = x, y = y)  # lambda is 0.3083426
+RMSE.Lambda1.df = RMSE.Lambda(k = 100, x = x, y = y)
+
+# Plot the lambda that minimizes RMSE
+ggplot(RMSE.Lambda1.df, aes( x = log(lambda), y = mean.RMSE)) + 
+  geom_point() + geom_line() +
+  geom_point(data = RMSE.Lambda1.df %>% 
+               filter(mean.RMSE == min(mean.RMSE)),
+             color = "red") + 
+  labs(title = "Lasso Regression")
+
+# Get lambda value that minimizes RMSE
+best.lasso.lambda1 <- RMSE.Lambda1.df %>% 
+  filter(mean.RMSE == min(mean.RMSE))
+best.lasso.lambda1
+
+# What coefficients do we get?
+coef(fit.lasso1,s = 0.3083426)
+
+## Conlcusion: Lambda is unchanged, RMSE is actually lower,
+## and only foreigners are excluded.
