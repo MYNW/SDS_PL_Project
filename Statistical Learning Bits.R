@@ -125,7 +125,7 @@ ggplot(RMSE.Lambda.df, aes( x = lambda, y = mean.RMSE)) +
   geom_point(data = RMSE.Lambda.df %>% 
                filter(mean.RMSE == min(mean.RMSE)),
              color = "red") + 
-  labs(title = "Ridge Regression")
+  labs(title = "Lasso Regression")
 
 # Get lambda value that minimizes RMSE
 best.lasso.lambda = RMSE.Lambda.df %>% 
@@ -136,11 +136,24 @@ best.lasso.lambda
 coef(fit.lasso,s = 0.3083426)
 
 ##---------------------------------------
-
-## Smart Monkey - 
+## Smart Monkey - Doing simple linear OLS regression. 
 SLR <- lm(y ~ PL_SL$points_last)
 SLR.sm <- summary(SLR)
 SLR.rmse <- function(SLR.sm) 
   sqrt(mean(SLR.sm$residuals^2))
 SLR.rmse(SLR.sm)  # RMSE is 13.04625
+
+
+## 
+n = nrow(PL_SL)
+indices = sort(sample(1:n, round(.5*n)))
+training.df = PL_SL[indices, ]
+test.df = PL_SL[-indices, ]
+SLR.fit = lm(training.df$points ~ training.df$points_last) 
+summary(SLR.fit)
+SLR.pred = predict(SLR.fit, test.df$points_last)
+SLR.rmse = sqrt(mean(SLR.pred-test.df$points)^2)
+
+
+
 
