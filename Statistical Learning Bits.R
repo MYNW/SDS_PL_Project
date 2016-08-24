@@ -3,22 +3,27 @@
 ## Load the neccesary libraries
 library(glmnet)
 library(leaps)
+library(rio)
 require(parallel)
 require(data.table)
 require(plyr)
 
-## Generate a new dataframe with only the variables we need:
-PL_SL <- PL_promotion %>%
-  select(points,
-         points_last, 
-         avg_age,
-         club_transfer_ratio,
-         manager_change,
-         star_players,
-         played_internationally,
-         squad_size,
-         foreigners,
-         promotion)
+## Load needed data frame
+filepath = "https://github.com/MYNW/SDS_PL_Project/blob/master/SL_PL.csv"
+PL_SL <- import(filepath)
+
+## Generate a new dataframe with only the variables we need as an alternative
+#PL_SL <- PL_promotion %>%
+#  select(points,
+#         points_last, 
+#         avg_age,
+#         club_transfer_ratio,
+#         manager_change,
+#         star_players,
+#         played_internationally,
+#         squad_size,
+#         foreigners,
+#         promotion)
 
 ## Generate our in- and outputs
 x = model.matrix(points ~ . - 1, data = PL_SL)
@@ -32,7 +37,10 @@ set.seed(2016)
 ##--------------------------------------------------------
 
 MLR <- lm(y ~ x)
-summary(MLR)
+MLR.sm <- summary(MLR)
+MLR.rmse <- function(MLR.sm) 
+  sqrt(mean(MLR.sm$residuals^2))
+MLR.rmse(MLR.sm)  # RMSE = 10.81154
 
 
 ##--------------------------------------------------------
@@ -67,6 +75,7 @@ best.ridge.lambda  # is 0.9637915
 
 # Find the coefficients for this model
 coef(cv.ridge,s= 0.9637915)
+
 
 ##--------------------------------------------------------
 ## Lasso Regression - Standard Model
@@ -115,13 +124,23 @@ ggplot(RMSE.Lambda.df, aes( x = lambda, y = mean.RMSE)) +
   geom_point() + geom_line() +
   geom_point(data = RMSE.Lambda.df %>% 
                filter(mean.RMSE == min(mean.RMSE)),
-             color = "red")
+             color = "red") + 
+  labs(title = "Ridge Regression")
 
 # Get lambda value that minimizes RMSE
-Best.Lasso.df
+best.lasso.lambda = RMSE.Lambda.df %>% 
+  filter(mean.RMSE == min(mean.RMSE))
+best.lasso.lambda
 
 # What coefficients do we get?
 coef(fit.lasso,s = 0.3083426)
 
+##---------------------------------------
 
+## Smart Monkey - 
+SLR <- lm(y ~ PL_SL$points_last)
+SLR.sm <- summary(SLR)
+SLR.rmse <- function(SLR.sm) 
+  sqrt(mean(SLR.sm$residuals^2))
+SLR.rmse(SLR.sm)  # RMSE is 13.04625
 
