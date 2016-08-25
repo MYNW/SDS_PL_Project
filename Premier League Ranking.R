@@ -1,7 +1,10 @@
-## SDS - Final Group Project - Premier League Performance Prediction
+##-----------------------------------------------##
+## SDS - Final Group Project
+## Premier League Performance Prediction
+##-----------------------------------------------##
 
-##-----------------------------------------------
-## Load libraries
+## Loading libraries
+
 library("rvest")
 library("purrr")
 library(dplyr)
@@ -13,26 +16,29 @@ library(httr)
 library(ggplot2)
 library(ggthemes)
 library(XML)
-##-----------------------------------------------
-## Scraping team rankings for different seasons
+
+##-----------------------------------------------##
+#######                                     #######
+#######                                     ####### 
+#######    1. DATA GATHERING & CLEANUP      #######
+#######                                     #######
+#######                                     #######
+##-----------------------------------------------##
+
+## 1.1 Scraping team rankings for different seasons from Statto
+
+##-----------------------------------------------##
 
 ## Create links to the pages to be scraped
+
 base.link = "http://www.statto.com/football/stats/england/premier-league/"
 year1 = seq(1992, 2015, by = 1)
 year2 = seq(1993, 2016, by = 1)
 rank.links = paste0(base.link, year1,"-",year2)
 rank.links[1:5]
 
-## Test statto site
-# NB! HTTP Error 403 when scraping! Site might be protected. Use the GET function! 
-## Grab the team ranking from the first link
-x <- GET(rank.links[1], add_headers('user-agent' = 'r'))
-x %>%
-  read_html() %>%  # Read html 
-  html_node(".league-table-mini td:nth-child(5)") %>%  # Grab the text 
-  html_text()  # Create text
-
 ## Create a scraping function
+
 scrape_ranks = function(link){
   parsed.link = GET(link, add_headers('user-agent' = 'r')) %>% 
     read_html
@@ -59,27 +65,25 @@ scrape_ranks = function(link){
 }
 
 ## Scrape away!
+
 PLranks.df = rank.links %>% 
   map_df(scrape_ranks)
 
+##-----------------------------------------------##
 
+## 1.2 Scraping team statistics for different seasons from Transfermarkt
 
-##------------------------------------------------------------------------
+##-----------------------------------------------##
 
-## Get Team Stats
+## Create links to the pages to be scraped
+
 base.team.link = "http://www.transfermarkt.co.uk/premier-league/startseite/wettbewerb/GB1/plus/?saison_id="
 year1 = seq(1992, 2015, by = 1)
 team.links = paste0(base.team.link, year1)
 team.links[1:5]
 
-## Test
-clubs.92 = team.links[1] %>%
-  read_html(encoding = "UTF-8") %>%  # Read html 
-  html_node(".large-8 :nth-child(2) .table-header") %>%  # Grab the text 
-  html_text()  # Create text
-clubs.92
-
 ## Create a scraping function
+
 scrape_team = function(link){
   parsed.link = link %>% 
     read_html(encoding = "UTF-8")
@@ -117,26 +121,22 @@ scrape_team = function(link){
 PLteams.df = team.links %>% 
   map_df(scrape_team)
 
-##---------------------------------------------------------------
+##-----------------------------------------------##
 
-## Get clubs' transfer spending
+## 1.3 Scraping team transfer spending for different seasons from Transfermarkt
+
+##-----------------------------------------------##
+
+## Create links to the pages to be scraped
+
 base.transfer.link = "http://www.transfermarkt.co.uk/premier-league/transfers/wettbewerb/GB1/plus/?saison_id="
 year1 = seq(1992, 2015, by = 1)
 base1.transfer.link = "&s_w=&leihe=0&leihe=1&intern=0&intern=1"
 transfer.links = paste0(base.transfer.link, year1, base1.transfer.link)
 transfer.links[1:5]
 
-## Testing
-transfer.92 = transfer.links[1] %>%
-  read_html(encoding = "UTF-8") %>%  # Read html 
-  html_nodes(".transfer-einnahmen-ausgaben.redtext") %>%  # Grab the text 
-  html_text() %>%
-  str_replace_all(pattern = "\\n|\\t|\\r|Expenditures:" ,
-                replacement = "") %>%
-  str_trim()
-transfer.92
-
 ## Create a scraping function
+
 scrape_transfer = function(link){
   parsed.link = link %>% 
     read_html(encoding = "UTF-8")
@@ -163,9 +163,13 @@ scrape_transfer = function(link){
 PLtransfer.df = transfer.links %>% 
   map_df(scrape_transfer)
 
-##------------------------------------------------------------------------
+##-----------------------------------------------##
 
-## Clean/Tidy data - The club names and season codes should be the same
+## 1.4 Cleanup and tidying of Statto and Transfermarkt data
+
+##-----------------------------------------------##
+
+## The club names and season codes should be the same
 PL_transfer = PLtransfer.df %>%
   mutate(season = str_replace_all(season, "[A-z]", "") %>%
            str_replace_all(pattern = "\\n|\\t|\\r",
@@ -211,17 +215,21 @@ PL_transfer1 <- PL_transfer %>%
 PL_transfer <- PL_transfer1 %>%
   mutate(total_transfer_spending = ifelse(is.na(total_transfer_spending),
                                           0,total_transfer_spending))
-
-
 ## Merge into one big data frame
 PL_final <- full_join(PLranks1, PL_teams, by = c("season", "club"))
 PL_data <- full_join(PL_final, PL_transfer, by = c("season", "club"))
 
-##---------------------------------------------------------------------
-## Manager Dummy (Helge)
+##-----------------------------------------------##
 
-# scrape data from wikipedia table
+## 1.5 Scraping team manager changes from wikipedia
+
+##-----------------------------------------------##
+
+## Create links to the pages to be scraped
+
 link = "https://en.wikipedia.org/wiki/List_of_Premier_League_managers"
+
+## Select the CSS identifiers to scrape from wikipedia tables
 
 css.selector = "td:nth-child(3) a"
 manager1.data = link %>% 
@@ -235,10 +243,18 @@ manager2.data = link %>%
   html_nodes(css = css.selector) %>% 
   html_text()
 
+## Create dataframe with scraped data
+
 df = data.frame(month_year = manager2.data,
                 club = manager1.data)
 
-# create new variables for year and month
+##-----------------------------------------------##
+
+## 1.6 Cleanup and tidying of wikipedia manager data
+
+##-----------------------------------------------##
+
+## Create new variables for year and month
 n<-length(df$month_year)
 manager_year<-rep(NA,n)
 for (i in 1:n) {
@@ -313,14 +329,13 @@ df$month_number = month_number
 df$manager_month = manager_month
 df$manager_year = manager_year
 
-
-# create a subset, that only contains the manager changes from 1992 or later 
-# (the wiki table had some information about the 1980s).
+## Create a subset, that only contains the manager changes from 1992 or later 
+## (the wiki table had some information about the 1980s).
 df2 = subset(df, manager_year!="NA")
 df2$manager_year = as.numeric(df2$manager_year)
 class(df2$manager_year)
 
-# create a variable that contains both club name and season.
+## create a variable that contains both club name and season.
 n<-length(df2$month_year)
 change_id<-rep(NA,n)
 for (i in 1:n) {
@@ -332,7 +347,7 @@ for (i in 1:n) {
 
 df2$change_id = change_id
 
-# create in PL_data a similar variable to the change_id variable in df2.
+## create in PL_data a similar variable to the change_id variable in df2.
 n <- length(PL_data$season)
 team_year_id <- rep(NA,n)
 for (i in 1:n) {
@@ -366,10 +381,6 @@ for (i in 1:n) {
 
 PL_data$team_year_id = team_year_id
 
-
-# test
-PL_data$team_year_id %in% df2$change_id
-
 # create a new variable that says TRUE for every element in team_year_id that is also in change_id.
 # SO it will give me TRUE for every row (club and season) where a manager change took place.
 manager_change2 = PL_data$team_year_id %in% df2$change_id
@@ -383,18 +394,20 @@ for (i in 1:n) {
   else {manager_change[i] = 0}
 }  
 
-# add the final manager_change dummy to Mai's PL_data framme.
+# add the final manager_change dummy to PL_data frame.
 PL_data$manager_change = manager_change
 
-##------------------------------------------------------------------------
-## Star-Index by Karolis
+##-----------------------------------------------##
 
+## 1.7 Scraping football award information from wikipedia tables for Star Player index
+
+##-----------------------------------------------##
 ##RAW TABLE EXTRACTION
 ##TOP3 BALLON AWARD 2010-2015
 url1 <- "https://en.wikipedia.org/wiki/FIFA_Ballon_d%27Or"
 award1 <- url1 %>%
-  html() %>%
-  ##xPath to First Wiki table
+  read_html() %>%
+##xPath to First Wiki table
   html_nodes(xpath='//*[@id="mw-content-text"]/table[1]') %>%
   html_table(fill = TRUE)
 award1 <- award1[[1]]
@@ -403,11 +416,17 @@ award1 <- award1[[1]]
 ##TOP3 World Player Award 1991 - 2009
 url2 <- "https://en.wikipedia.org/wiki/FIFA_World_Player_of_the_Year"
 award2 <- url2 %>%
-  html() %>%
-  ##xPath to First Wiki table
+  read_html() %>%
+##xPath to First Wiki table
   html_nodes(xpath='//*[@id="mw-content-text"]/table[1]') %>%
   html_table(fill = TRUE)
 award2 <- award2[[1]]
+
+##-----------------------------------------------##
+
+## 1.8 Cleanup and tidying of wikipedia football award information
+
+##-----------------------------------------------##
 
 ##TABLE CLEANUP
 ##Removing random descriptive text from data frames
@@ -496,31 +515,39 @@ PL_data1 <- left_join(PL_data, awardsmerged.tidy, by = c("season_start" = "Year"
 ## Clean new dummy
 PL_data1$star_players[is.na(PL_data1$star_players)] <- 0
 
-##------------------------------------------------------------------------
-## Generate a dummy for teams that played internationally that season
+##-----------------------------------------------##
 
-#Champions League
-link1 = paste0("https://en.wikipedia.org/wiki/English_football_clubs_in_international_competitions")  #link to wiki page
+## 1.9 Scraping information about english clubs in international competitions from wikipedia
+
+##-----------------------------------------------##
+
+##Champions League
+link1 = paste0("https://en.wikipedia.org/wiki/English_football_clubs_in_international_competitions")
 link.data1 = link1 %>%   #
   read_html() %>% 
   html_node(".wikitable:nth-child(16) , tr:nth-child(48) td:nth-child(1) a , tr:nth-child(47) a , tr:nth-child(46) a") %>% 
-  # extract first node with class wikitable
   html_table(fill = TRUE) %>% 
   select(Year, Team) %>% 
   filter(Year >= 1992)
-# then convert the HTML table into a data frame
 
-#Europe League
-link2 = paste0("https://en.wikipedia.org/wiki/English_football_clubs_in_international_competitions")  #link to wiki page
+## then convert the HTML table into a data frame
+
+##Europe League
+link2 = paste0("https://en.wikipedia.org/wiki/English_football_clubs_in_international_competitions")
 link.data2 = link2 %>%   #
   read_html() %>% 
   html_node(".wikitable:nth-child(19)") %>% 
-  # extract first node with class wikitable
   html_table(fill = TRUE) %>% 
   select(Year, Team) %>% 
   filter(Year >= 1992)
 
-#new approach: combining two data frames
+##-----------------------------------------------##
+
+## 1.10 Cleanup and tidying of english clubs in international competitions data
+
+##-----------------------------------------------##
+
+##new approach: combining two data frames
 df1 = data.frame(link.data1)
 df2 = data.frame(link.data2)
 
@@ -529,10 +556,10 @@ df3 = rbind(df1, df2) %>%
   mutate(Year = as.numeric(strtrim(Year,4)),
          played_internationally = 1)
 
-# remove duplicates based on "Year" and "Team"
+## remove duplicates based on "Year" and "Team"
 df4 <-df3[!duplicated(df3),]
 
-# merge with existing data frame
+## merge with existing data frame
 PL_data2 <- left_join(PL_data1, df4, by = c("season_start" = "Year", 
                                                          "club" = "Team")) 
 
@@ -544,7 +571,11 @@ PL_data3 = PL_data2%>%
                                  lead(played_internationally), 0)) %>%
   arrange(season)
 
-##------------------------------------------------------------------------
+##-----------------------------------------------##
+
+## 1.11 Generating new variables for later use
+
+##-----------------------------------------------##
 ## Prepare a data frame for the first table - check classes of vectors
 sapply(PL_data3, class)
 PL_data3$avg_age <- as.numeric(PL_data3$avg_age)
@@ -560,7 +591,16 @@ PL_Table1 <- PL_data3 %>%
          log_points = log10(points),
          log_transfer_ratio = log10(club_transfer_ratio),
          foreigners = foreign_players/squad_size) %>%
-  ungroup() 
+ungroup() 
+
+
+##-----------------------------------------------##
+#######                                     #######
+#######                                     ####### 
+#######    2. DATA VISUALIZATION            #######
+#######                                     #######
+#######                                     #######
+##-----------------------------------------------##
 
 ## Highest transfer ratio
 PL_Topratio <- PL_Table1 %>%
@@ -568,9 +608,7 @@ PL_Topratio <- PL_Table1 %>%
   select(season, club, club_transfer_ratio)
 knitr::kable(PL_Topratio[1:5, ])
 
-
-## Descriptive statistics
-# Development in transfer spending (mean and average)
+## Development in transfer spending (mean and average)
 ggplot(PL_Table1, aes(x = season_start, y = season_median)) + 
   geom_bar(stat = "identity")
 
@@ -586,7 +624,7 @@ ggplot(PL_Table1, aes(x = as.character(manager_change), y = points)) +
   theme_bw() + 
   scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes"))
 
-# Box-plots - Manager changes and points distribution (***)
+## Box-plots - Manager changes and points distribution (***)
 ggplot(PL_Table1, aes(x = as.character(star_players), y = points)) + 
   geom_boxplot() + 
   coord_flip() + 
@@ -595,7 +633,7 @@ ggplot(PL_Table1, aes(x = as.character(star_players), y = points)) +
   scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes")) + 
   theme_bw()
 
-# Box-plots - International gameplay and points distribution(***)
+## Box-plots - International gameplay and points distribution(***)
 ggplot(PL_Table1, aes(x = as.character(played_internationally), y = points)) + 
   geom_boxplot() + 
   coord_flip() + 
@@ -604,18 +642,18 @@ ggplot(PL_Table1, aes(x = as.character(played_internationally), y = points)) +
   scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes")) +
   theme_bw()
 
-## Make scatterplots - we should consider making log-log models
-  # Transfer spending and points (absolute value)
+## Make scatterplots
+## Transfer spending and points (absolute value)
 ggplot(PL_Table1, aes(x = total_transfer_spending, y = points)) + 
   geom_point(alpha = .25) + 
   geom_smooth()
 
-  # Transfer spending and points (relative value)
+## Transfer spending and points (relative value)
 ggplot(PL_Table1, aes(x = log_transfer_ratio, y = log_points)) + 
   geom_point(alpha = .25) + 
   geom_smooth()
 
-  # Average team age and points (seemingly negative correlation) (***)
+## Average team age and points (seemingly negative correlation) (***)
 ggplot(PL_Table1, aes(x = avg_age, y = points)) + 
   geom_point(alpha = .25) + 
   geom_smooth() + 
@@ -624,13 +662,13 @@ ggplot(PL_Table1, aes(x = avg_age, y = points)) +
         y = "Total points accumulated")
   
 
-  # Club transfer ratio and points (using the median)
+## Club transfer ratio and points (using the median)
 ggplot(PL_Table1, aes(x = club_transfer_ratio, y = points)) + 
   geom_point(alpha = .25) + 
   geom_smooth() + 
   geom_vline(xintercept = 1)
 
-  # Club transfer ratio and points (using the mean)
+## Club transfer ratio and points (using the mean)
 ggplot(PL_Table1, aes(x = club_transfer_ratio1, y = points)) + 
   geom_point(alpha = .25) + 
   geom_smooth() + 
@@ -692,15 +730,6 @@ ggplot(PL_points, aes(x = club_transfer_ratio, y = points, colour = status)) +
   facet_wrap(~ manager_change, ncol = 2, 
              scales = "free_x") 
 
-## log-log model - DISCARD!
-ggplot(PL_points, aes(x = log_transfer_ratio, y = log_points, colour = status)) + 
-  geom_point(alpha = .25) + 
-  geom_smooth()
-
-
-##-------------------------------------------------------------
-
-## 
 PL_promotion <- PL_points %>%
   arrange(club, -season_start) %>%
   mutate (promotion = ifelse(season_start != season_end[-1], 1, 0))
@@ -717,14 +746,6 @@ ggplot(PL_promotion, aes(x = as.character(promotion), y = points)) +
   ylab("Total points accumulated") +
   scale_x_discrete(breaks = c(0,1), labels = c("No", "Yes")) + 
   theme_bw()
-
-# Discard this scatter plot!
-ggplot(PL_promotion, aes(x = club_transfer_ratio1, y = points)) + 
-  geom_point(alpha = 0.25) + 
-  geom_smooth() + 
-  geom_vline(xintercept = 1) + 
-  facet_wrap(~ promotion, ncol = 2, 
-             scales = "free_x") 
 
 ## Foreigners and points (no clear correlation) (***)
 ggplot(PL_promotion, aes(x = foreigners, y = points)) + 
