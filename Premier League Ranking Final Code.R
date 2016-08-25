@@ -1,5 +1,5 @@
 ##-----------------------------------------------##
-## SDS - Final Group Project
+## SDS - Final Group 15 Project
 ## Premier League Performance Prediction
 ##-----------------------------------------------##
 
